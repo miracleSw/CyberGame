@@ -11,7 +11,7 @@ export interface KhachHang {
   // 2. MayTinh (PC)
   export interface MayTinh {
     maMay: string;
-    trangThai: number; // 0: Trống, 1: Đang chơi, 2: Hỏng/Bảo trì
+    trangThai: number; // 0: Trống, 1: Đang chơi, 2: Hỏng/Bảo trì, 3: Đã đặt trước
     viTri: string;
   }
   
@@ -56,12 +56,12 @@ export interface KhachHang {
     { maMay: "PC-01", trangThai: 0, viTri: "Tầng 1 - Dãy A" },
     { maMay: "PC-02", trangThai: 1, viTri: "Tầng 1 - Dãy A" },
     { maMay: "PC-03", trangThai: 0, viTri: "Tầng 1 - Dãy A" },
-    { maMay: "PC-04", trangThai: 1, viTri: "Tầng 1 - Dãy A" },
+    { maMay: "PC-04", trangThai: 3, viTri: "Tầng 1 - Dãy A" },
     { maMay: "PC-05", trangThai: 0, viTri: "Tầng 1 - Dãy A" },
     { maMay: "PC-06", trangThai: 1, viTri: "Tầng 1 - Dãy B" },
     { maMay: "PC-07", trangThai: 1, viTri: "Tầng 1 - Dãy B" },
     { maMay: "PC-08", trangThai: 0, viTri: "Tầng 1 - Dãy B" },
-    { maMay: "PC-09", trangThai: 1, viTri: "Tầng 1 - Dãy B" },
+    { maMay: "PC-09", trangThai: 3, viTri: "Tầng 1 - Dãy B" },
     { maMay: "PC-10", trangThai: 1, viTri: "Tầng 1 - Dãy B" },
     {
       maMay: "PC-11",

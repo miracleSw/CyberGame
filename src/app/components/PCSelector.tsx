@@ -63,6 +63,14 @@ export function PCSelector({ pcs, onSelect }: PCSelectorProps) {
                       </span>
                     </>
                   )}
+                  {pc.trangThai === 3 && (
+                    <>
+                      <Wrench className="w-3 h-3 text-yellow-400" />
+                      <span className="text-yellow-400 font-bold">
+                        Đã đặt trước
+                      </span>
+                    </>
+                  )}
                 </div>
               </button>
             );

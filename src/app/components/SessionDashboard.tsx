@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react"; // Thêm AnimatePresence
 import {
   Clock,
   Wallet,
@@ -12,18 +12,20 @@ import {
   Coffee,
   Key,
   User,
-  Utensils,     // Icon mới
-  CheckCircle,  // Icon mới
-  History       // Icon mới
+  Utensils,
+  CheckCircle,
+  History,
+  ChevronRight, // Icon nút thu nhỏ
+  Menu,
+  TrendingUp,         // Icon nút mở lại
 } from "lucide-react";
-// Import thêm HoaDon
 import type { PhienChoi, HoaDon } from "../types";
 import { COST_PER_MINUTE } from "../data/mockData";
 
 interface SessionDashboardProps {
   session: PhienChoi;
   balance: number;
-  orders: HoaDon[]; // <--- 1. THÊM PROP NÀY
+  orders: HoaDon[];
   username: string;
   machineId: string;
   onBalanceUpdate: (updater: (prev: number) => number) => void;
@@ -36,7 +38,7 @@ interface SessionDashboardProps {
 export function SessionDashboard({
   session,
   balance,
-  orders, // <--- 2. NHẬN PROP
+  orders,
   username,
   machineId,
   onBalanceUpdate,
@@ -47,8 +49,10 @@ export function SessionDashboard({
 }: SessionDashboardProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  
-  // State Password handling... (Giữ nguyên logic cũ của bạn)
+
+  // --- STATE MỚI: Quản lý việc thu nhỏ/mở rộng ---
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -65,7 +69,6 @@ export function SessionDashboard({
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Effects (Giữ nguyên logic đồng hồ & trừ tiền cũ của bạn)
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -89,24 +92,21 @@ export function SessionDashboard({
   const balancePercentage = (balance / 100000) * 100;
   const isCriticalBalance = balance < COST_PER_MINUTE * 5;
 
-
   useEffect(() => {
     if (isCriticalBalance) {
       toast.warning("Cảnh báo: Sắp hết giờ chơi!", {
         description: "Số dư tài khoản đang ở mức thấp. Vui lòng nạp thêm.",
         duration: 8000,
-        // (Tuỳ chọn) Thêm nút bấm nhanh
         action: {
           label: "Nạp ngay",
           onClick: () => {
-             onOpenTopUp()
+            onOpenTopUp()
           }
         }
       });
     }
   }, [isCriticalBalance]);
 
-  // Giữ nguyên hàm handlePasswordSubmit...
   const handlePasswordSubmit = () => {
     if (!oldPassword || !newPassword || !confirmPassword) return;
     if (newPassword !== confirmPassword) return;
@@ -120,13 +120,42 @@ export function SessionDashboard({
 
   return (
     <>
-      <div className="fixed top-0 right-0 h-screen w-80 z-40 flex shadow-2xl">
+      <AnimatePresence>
+        {isCollapsed && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            onClick={() => setIsCollapsed(false)}
+            className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white/20 transition-transform hover:scale-110 active:scale-95"
+            title="Mở Dashboard"
+          >
+            <Menu className="w-6 h-6" />
+            {/* Badge thông báo đỏ nếu sắp hết tiền */}
+            {isCriticalBalance && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-ping" />
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <div className="fixed top-0 right-0 h-screen w-80 z-40 flex pointer-events-none">
         <motion.div
           initial={{ x: "100%" }}
-          animate={{ x: 0 }}
+          // Sửa logic animate: Nếu isCollapsed = true thì đẩy sang phải 120%
+          animate={{ x: isCollapsed ? "120%" : 0 }}
           transition={{ type: "spring", damping: 20, stiffness: 100 }}
-          className="w-full bg-slate-900/95 backdrop-blur-md border-l border-white/10 flex flex-col h-full"
+          className="w-full bg-slate-900/95 backdrop-blur-md border-l border-white/10 flex flex-col h-full pointer-events-auto relative"
         >
+
+          <button
+            onClick={() => setIsCollapsed(true)}
+            className="absolute top-4 left-4 z-50 p-1.5 rounded-full bg-black/20 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+            title="Thu nhỏ Dashboard"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+
           {/* --- HEADER --- */}
           <div className="p-6 border-b border-white/10 flex flex-col items-center text-center bg-gradient-to-b from-white/5 to-transparent flex-shrink-0">
             <div className="w-16 h-16 mb-2 relative">
@@ -142,13 +171,10 @@ export function SessionDashboard({
             </div>
           </div>
 
-          {/* --- BODY (SCROLLABLE) --- */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-            
+          <div className="p-4 pb-0 space-y-4">
             {/* 1. Số dư */}
-            <div className={`p-4 rounded-xl border transition-all ${
-                isCriticalBalance ? "bg-red-500/10 border-red-500/30" : "bg-green-500/10 border-green-500/30"
-            }`}>
+            <div className={`p-4 rounded-xl border transition-all ${isCriticalBalance ? "bg-red-500/10 border-red-500/30" : "bg-green-500/10 border-green-500/30"
+              }`}>
               <div className="flex items-center gap-2 mb-1">
                 <Wallet className={`w-4 h-4 ${isCriticalBalance ? "text-red-400" : "text-green-400"}`} />
                 <span className="text-base uppercase text-white font-medium">Số dư hiện tại</span>
@@ -160,7 +186,7 @@ export function SessionDashboard({
 
             {/* 2. Thời gian còn lại */}
             <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
-               <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1">
                 <TrendingDown className="w-4 h-4 text-purple-400" />
                 <span className="text-base uppercase text-white font-medium">Thời gian còn lại</span>
               </div>
@@ -170,25 +196,29 @@ export function SessionDashboard({
             </div>
 
             {/* 3. Thời gian đã chơi */}
-            <div className="p-4 rounded-xl bg-blue-500/5 border border-white/5 flex items-center justify-between">
-              <div>
-                 <p className="text-base uppercase text-white font-bold mb-1">Thời gian đã chơi</p>
-                 <p className="text-xl font-mono text-white">{formatTime(timeElapsed)}</p>
+            <div className="p-4 rounded-xl bg-blue-500/5 border border-white/5">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-green-300" />
+                <span className="text-base uppercase text-white font-medium">Thời gian đã dùng</span>
               </div>
-              <Clock className="w-8 h-8 text-white" />
+              <div className="text-2xl font-mono font-bold text-green-300">
+                {formatTime(timeElapsed)}
+              </div>
             </div>
 
             {/* --- KẺ NGANG PHÂN CÁCH --- */}
             <div className="h-px bg-white/10 my-2"></div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-white text-xs font-bold uppercase flex items-center gap-2">
+                <Utensils size={12} /> Đơn hàng ({orders.length})
+              </h3>
+            </div>
+          </div>
 
-            {/* 4. DANH SÁCH ĐƠN HÀNG (MỚI THÊM VÀO ĐÂY) */}
+          {/* --- BODY (SCROLLABLE) --- */}
+          <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4 custom-scrollbar">
+            {/* 4. DANH SÁCH ĐƠN HÀNG */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-white text-xs font-bold uppercase flex items-center gap-2">
-                  <Utensils size={12} /> Đơn hàng ({orders.length})
-                </h3>
-              </div>
-
               {orders.length === 0 ? (
                 <div className="text-center py-6 border border-dashed border-white/10 rounded-xl">
                   <History className="w-8 h-8 text-white mx-auto mb-2" />
@@ -196,10 +226,9 @@ export function SessionDashboard({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Map ngược để đơn mới nhất lên đầu */}
                   {[...orders].reverse().map((order) => (
-                    <div 
-                      key={order.maHoaDon} 
+                    <div
+                      key={order.maHoaDon}
                       className="bg-black/20 rounded-xl p-3 border border-white/5 hover:border-white/20 transition-colors"
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -216,7 +245,7 @@ export function SessionDashboard({
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="space-y-1.5 mb-2">
                         {order.items.map((item, idx) => (
                           <div key={idx} className="flex justify-between text-xs text-white/80">
@@ -225,9 +254,9 @@ export function SessionDashboard({
                           </div>
                         ))}
                       </div>
-                      
+
                       <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
-                        <span className="text-white/30">{order.ngayTao.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span className="text-white/30">{order.ngayTao.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="text-white font-bold">{order.tongTien.toLocaleString()}đ</span>
                       </div>
                     </div>
@@ -235,72 +264,161 @@ export function SessionDashboard({
                 </div>
               )}
             </div>
-
-            {/* Thông tin giờ hệ thống */}
-            <div className="text-center pt-2 pb-4">
-               <p className="text-white text-[12px] font-mono">{currentTime.toLocaleTimeString("vi-VN")}</p>
-            </div>
           </div>
 
           {/* --- FOOTER: BUTTONS --- */}
           <div className="p-4 border-t border-white/10 bg-slate-950/50 space-y-3 flex-shrink-0">
             <div className="grid grid-cols-2 gap-3">
-                <button
-                    onClick={onOpenServices}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/20 transition-all group"
-                >
-                    <Coffee className="w-5 h-5 mb-1 group-hover:scale-110 transition-transform" />
-                    <span className="text-xs font-bold">Dịch vụ</span>
-                </button>
-                <button
-                    onClick={onOpenTopUp}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 transition-all group"
-                >
-                    <CreditCard className="w-5 h-5 mb-1 group-hover:scale-110 transition-transform" />
-                    <span className="text-xs font-bold">Nạp tiền</span>
-                </button>
+              <button
+                onClick={onOpenServices}
+                className="flex flex-col items-center justify-center p-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/20 transition-all group"
+              >
+                <Coffee className="w-5 h-5 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-bold">Dịch vụ</span>
+              </button>
+              <button
+                onClick={onOpenTopUp}
+                className="flex flex-col items-center justify-center p-3 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 transition-all group"
+              >
+                <CreditCard className="w-5 h-5 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-bold">Nạp tiền</span>
+              </button>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
-                 <button
-                    onClick={() => setShowPasswordModal(true)}
-                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/5 transition-all"
-                >
-                    <Key className="w-4 h-4" />
-                    <span className="text-xs">Đổi MK</span>
-                </button>
-                 <button
-                    onClick={onLogout}
-                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all"
-                >
-                    <LogOut className="w-4 h-4" />
-                    <span className="text-xs font-bold">Đăng xuất</span>
-                </button>
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/5 transition-all"
+              >
+                <Key className="w-4 h-4" />
+                <span className="text-xs">Đổi MK</span>
+              </button>
+              <button
+                onClick={onLogout}
+                className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="text-xs font-bold">Đăng xuất</span>
+              </button>
+            </div>
+            {/* Thông tin giờ hệ thống */}
+            <div className="text-center pt-2">
+              <p className="text-white text-[12px] font-mono">{currentTime.toLocaleString("vi-VN")}</p>
             </div>
           </div>
         </motion.div>
       </div>
 
-      {/* --- MODAL PASSWORD --- */}
+      {/* Change Password Modal */}
       {showPasswordModal && (
-        // ... (Giữ nguyên code Modal đổi mật khẩu cũ của bạn ở đây) ...
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-           {/* Copy lại nội dung modal từ file cũ dán vào đây */}
-           {/* Để gọn code mình không paste lại đoạn này vì nó không thay đổi */}
-           {/* Nếu bạn cần mình paste lại toàn bộ thì báo nhé */}
-           <motion.div className="bg-slate-900 p-6 rounded-xl border border-white/10 max-w-sm w-full">
-              <h3 className="text-white mb-4">Đổi mật khẩu</h3>
-              {/* Form inputs... */}
-              <div className="space-y-3">
-                 <input type="password" placeholder="Mật khẩu cũ" className="w-full p-2 bg-white/5 rounded text-white" value={oldPassword} onChange={e=>setOldPassword(e.target.value)} />
-                 <input type="password" placeholder="Mật khẩu mới" className="w-full p-2 bg-white/5 rounded text-white" value={newPassword} onChange={e=>setNewPassword(e.target.value)} />
-                 <input type="password" placeholder="Xác nhận" className="w-full p-2 bg-white/5 rounded text-white" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 max-w-md w-full border border-white/20 shadow-2xl"
+          >
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                  <Key className="w-6 h-6 text-purple-400" />
+                </div>
+                <h3 className="text-white">Đổi mật khẩu</h3>
               </div>
-              <div className="flex gap-2 mt-4">
-                 <button onClick={handlePasswordSubmit} className="flex-1 bg-purple-600 text-white p-2 rounded">Lưu</button>
-                 <button onClick={()=>setShowPasswordModal(false)} className="flex-1 bg-white/10 text-white p-2 rounded">Hủy</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-white/80 text-sm mb-2 block">
+                  Mật khẩu cũ
+                </label>
+                <input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) =>
+                    setOldPassword(e.target.value)
+                  }
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
+                  placeholder="Nhập mật khẩu cũ"
+                />
               </div>
-           </motion.div>
+
+              <div>
+                <label className="text-white/80 text-sm mb-2 block">
+                  Mật khẩu mới
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) =>
+                    setNewPassword(e.target.value)
+                  }
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
+                  placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                />
+              </div>
+
+              <div>
+                <label className="text-white/80 text-sm mb-2 block">
+                  Xác nhận mật khẩu mới
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value)
+                  }
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
+                  placeholder="Nhập lại mật khẩu mới"
+                />
+              </div>
+
+              {/* Validation Messages */}
+              {newPassword &&
+                confirmPassword &&
+                newPassword !== confirmPassword && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                    <p className="text-red-300 text-sm">
+                      ⚠️ Mật khẩu xác nhận không khớp
+                    </p>
+                  </div>
+                )}
+
+              {newPassword && newPassword.length < 6 && (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <p className="text-yellow-300 text-sm">
+                    ⚠️ Mật khẩu phải có ít nhất 6 ký tự
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handlePasswordSubmit}
+                  disabled={
+                    !oldPassword ||
+                    !newPassword ||
+                    !confirmPassword ||
+                    newPassword !== confirmPassword ||
+                    newPassword.length < 6
+                  }
+                  className="flex-1 bg-purple-500 hover:bg-purple-600 disabled:bg-white/10 disabled:text-white/40 text-white py-3 rounded-lg transition-colors disabled:cursor-not-allowed"
+                >
+                  Đổi mật khẩu
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setOldPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg transition-colors border border-white/20"
+                >
+                  Huỷ
+                </button>
+              </div>
+            </div>
+          </motion.div>
         </div>
       )}
     </>
