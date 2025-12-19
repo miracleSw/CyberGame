@@ -140,11 +140,12 @@ export function SessionDashboard({
 
   const balancePercentage = (balance / 100000) * 100;
   const isCriticalBalance = balance < COST_PER_MINUTE * 5;
+  const hasShownWarningRef = useRef(false);
 
   useEffect(() => {
-    if (isCriticalBalance) {
+    if (isCriticalBalance && !hasShownWarningRef.current) {
       toast.warning("Cảnh báo: Sắp hết giờ chơi!", {
-        description: "Số dư tài khoản đang ở mức thấp. Vui lòng nạp thêm.",
+        description: "Số dư tài khoản sắp hết. Vui lòng nạp thêm.",
         duration: 8000,
         action: {
           label: "Nạp ngay",
@@ -153,6 +154,7 @@ export function SessionDashboard({
           }
         }
       });
+      hasShownWarningRef.current = true;
     }
   }, [isCriticalBalance, onOpenTopUp]);
 
