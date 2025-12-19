@@ -182,7 +182,7 @@ export function TopUpModal({
                 placeholder="Nhập số tiền (tối thiểu 10)"
                 className="flex-1 bg-white/10 border border-white/20 rounded-l-lg px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
-              <div className="bg-white/10 border border-l-0 border-white/20 rounded-r-lg px-3 py-3 text-white">
+              <div className="bg-white/10 border border-l-0 border-white/20 rounded-r-lg px-4 py-3 text-white ">
                 .000 VNĐ
               </div>
             </div>
