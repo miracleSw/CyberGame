@@ -51,7 +51,7 @@ export function PCSelector({ pcs, onSelect }: PCSelectorProps) {
                     <>
                       <Lock className="w-3 h-3 text-red-400" />
                       <span className="text-red-400 font-bold">
-                        Đang dùng
+                        Đang sử dụng
                       </span>
                     </>
                   )}

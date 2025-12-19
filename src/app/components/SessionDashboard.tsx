@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "motion/react"; // Thêm AnimatePresence
+import { motion, AnimatePresence } from "motion/react"; 
 import {
   Clock,
   Wallet,
@@ -15,12 +15,17 @@ import {
   Utensils,
   CheckCircle,
   History,
-  ChevronRight, // Icon nút thu nhỏ
+  ChevronRight, 
   Menu,
-  TrendingUp,         // Icon nút mở lại
+  ArrowUpRight, 
+  ArrowDownLeft, 
 } from "lucide-react";
-import type { PhienChoi, HoaDon } from "../types";
+import type { PhienChoi, HoaDon, LichSuGiaoDich } from "../types";
 import { COST_PER_MINUTE } from "../data/mockData";
+
+// Mock history khởi tạo
+const INITIAL_HISTORY: LichSuGiaoDich[] = [
+];
 
 interface SessionDashboardProps {
   session: PhienChoi;
@@ -49,9 +54,15 @@ export function SessionDashboard({
 }: SessionDashboardProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-
-  // --- STATE MỚI: Quản lý việc thu nhỏ/mở rộng ---
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // --- STATE MỚI ---
+  const [activeTab, setActiveTab] = useState<'orders' | 'history'>('orders');
+  const [history, setHistory] = useState<LichSuGiaoDich[]>(INITIAL_HISTORY);
+  
+  // Dùng ref để track thay đổi balance/order để tạo log
+  const prevBalanceRef = useRef(balance);
+  const prevOrdersLengthRef = useRef(orders.length);
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -89,6 +100,44 @@ export function SessionDashboard({
     return () => clearInterval(timer);
   }, [onBalanceUpdate, onLogout, COST_PER_SECOND]);
 
+  // --- LOGIC TỰ ĐỘNG TẠO HISTORY ---
+  useEffect(() => {
+    // 1. Detect Nạp tiền (Balance tăng đột biến > 1000đ)
+    if (balance > prevBalanceRef.current + 1000) {
+      const diff = balance - prevBalanceRef.current;
+      const newLog: LichSuGiaoDich = {
+        maGiaoDich: `gd-${Date.now()}`,
+        maKhachHang: session.maKhachHang,
+        loaiGiaoDich: "NAP_TIEN",
+        soTien: diff,
+        thoiGian: new Date(),
+        trangThai: 1,
+        ghiChu: "Nạp tiền thành công"
+      };
+      setHistory(prev => [newLog, ...prev]);
+    }
+    prevBalanceRef.current = balance;
+  }, [balance, session.maKhachHang]);
+
+  useEffect(() => {
+    // 2. Detect Gọi món (Order length tăng)
+    if (orders.length > prevOrdersLengthRef.current) {
+      const newOrder = orders[orders.length - 1]; // Lấy đơn mới nhất
+      const newLog: LichSuGiaoDich = {
+        maGiaoDich: `gd-order-${Date.now()}`,
+        maKhachHang: session.maKhachHang,
+        loaiGiaoDich: "TRU_TIEN_DICH_VU",
+        soTien: newOrder.tongTien,
+        thoiGian: new Date(),
+        trangThai: 1,
+        ghiChu: `Gọi món: ${newOrder.items[0]?.tenDichVu || 'Dịch vụ'}...`
+      };
+      setHistory(prev => [newLog, ...prev]);
+    }
+    prevOrdersLengthRef.current = orders.length;
+  }, [orders, session.maKhachHang]);
+
+
   const balancePercentage = (balance / 100000) * 100;
   const isCriticalBalance = balance < COST_PER_MINUTE * 5;
 
@@ -105,7 +154,7 @@ export function SessionDashboard({
         }
       });
     }
-  }, [isCriticalBalance]);
+  }, [isCriticalBalance, onOpenTopUp]);
 
   const handlePasswordSubmit = () => {
     if (!oldPassword || !newPassword || !confirmPassword) return;
@@ -131,7 +180,6 @@ export function SessionDashboard({
             title="Mở Dashboard"
           >
             <Menu className="w-6 h-6" />
-            {/* Badge thông báo đỏ nếu sắp hết tiền */}
             {isCriticalBalance && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-ping" />
             )}
@@ -142,7 +190,6 @@ export function SessionDashboard({
       <div className="fixed top-0 right-0 h-screen w-80 z-40 flex pointer-events-none">
         <motion.div
           initial={{ x: "100%" }}
-          // Sửa logic animate: Nếu isCollapsed = true thì đẩy sang phải 120%
           animate={{ x: isCollapsed ? "120%" : 0 }}
           transition={{ type: "spring", damping: 20, stiffness: 100 }}
           className="w-full bg-slate-900/95 backdrop-blur-md border-l border-white/10 flex flex-col h-full pointer-events-auto relative"
@@ -208,61 +255,110 @@ export function SessionDashboard({
 
             {/* --- KẺ NGANG PHÂN CÁCH --- */}
             <div className="h-px bg-white/10 my-2"></div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-white text-xs font-bold uppercase flex items-center gap-2">
-                <Utensils size={12} /> Đơn hàng ({orders.length})
-              </h3>
+
+            {/* --- TAB SWITCHER (MỚI) --- */}
+            <div className="flex items-center gap-2 p-1 bg-black/20 rounded-lg">
+                <button 
+                    onClick={() => setActiveTab('orders')}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center justify-center gap-1.5 ${
+                        activeTab === 'orders' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'
+                    }`}
+                >
+                    <Utensils size={12} /> Đơn hàng ({orders.length})
+                </button>
+                <button 
+                    onClick={() => setActiveTab('history')}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors flex items-center justify-center gap-1.5 ${
+                        activeTab === 'history' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'
+                    }`}
+                >
+                    <History size={12} /> Lịch sử
+                </button>
             </div>
           </div>
 
           {/* --- BODY (SCROLLABLE) --- */}
-          <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-4 custom-scrollbar">
-            {/* 4. DANH SÁCH ĐƠN HÀNG */}
+          <div className="flex-1 overflow-y-auto p-4 pt-2 space-y-4 custom-scrollbar">
+            
+            {/* NỘI DUNG TAB */}
             <div>
-              {orders.length === 0 ? (
-                <div className="text-center py-6 border border-dashed border-white/10 rounded-xl">
-                  <History className="w-8 h-8 text-white mx-auto mb-2" />
-                  <p className="text-white text-xs">Chưa gọi món nào</p>
-                </div>
+              {activeTab === 'orders' ? (
+                // --- TAB ĐƠN HÀNG ---
+                orders.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-white/10 rounded-xl bg-white/5 mt-2">
+                    <ShoppingBag className="w-8 h-8 text-white mx-auto mb-2" />
+                    <p className="text-white text-xs">Chưa gọi món nào</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {[...orders].reverse().map((order) => (
+                      <div
+                        key={order.maHoaDon}
+                        className="bg-black/20 rounded-xl p-3 border border-white/5 hover:border-white/20 transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-orange-400 text-[10px] font-bold bg-orange-400/10 px-1.5 py-0.5 rounded">
+                            #{order.maHoaDon.slice(-4)}
+                          </span>
+                          {order.trangThai === 0 ? (
+                            <span className="text-[10px] text-yellow-500 flex items-center gap-1">
+                              <Clock size={10} className="animate-spin-slow" /> Đang làm
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-green-500 flex items-center gap-1">
+                              <CheckCircle size={10} /> Xong
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5 mb-2">
+                          {order.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between text-xs text-white/80">
+                              <span>{item.tenDichVu} <span className="text-white/30 text-[10px]">x{item.soLuong}</span></span>
+                              <span className="font-mono text-white/50">{item.thanhTien.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
+                          <span className="text-white/30">{order.ngayTao.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-white font-bold">{order.tongTien.toLocaleString()}đ</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="space-y-3">
-                  {[...orders].reverse().map((order) => (
-                    <div
-                      key={order.maHoaDon}
-                      className="bg-black/20 rounded-xl p-3 border border-white/5 hover:border-white/20 transition-colors"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-orange-400 text-[10px] font-bold bg-orange-400/10 px-1.5 py-0.5 rounded">
-                          #{order.maHoaDon.slice(-4)}
-                        </span>
-                        {order.trangThai === 0 ? (
-                          <span className="text-[10px] text-yellow-500 flex items-center gap-1">
-                            <Clock size={10} className="animate-spin-slow" /> Đang làm
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-green-500 flex items-center gap-1">
-                            <CheckCircle size={10} /> Xong
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="space-y-1.5 mb-2">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-xs text-white/80">
-                            <span>{item.tenDichVu} <span className="text-white/30 text-[10px]">x{item.soLuong}</span></span>
-                            <span className="font-mono text-white/50">{item.thanhTien.toLocaleString()}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
-                        <span className="text-white/30">{order.ngayTao.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span className="text-white font-bold">{order.tongTien.toLocaleString()}đ</span>
-                      </div>
+                // --- TAB LỊCH SỬ ---
+                history.length === 0 ? (
+                    // Hiển thị khi trống
+                    <div className="text-center py-8 border border-dashed border-white/10 rounded-xl bg-white/5 mt-2">
+                        <History className="w-8 h-8 text-white mx-auto mb-2" />
+                        <p className="text-white text-xs">Chưa có giao dịch nào</p>
                     </div>
-                  ))}
+                ) : (
+                <div className="space-y-2">
+                    {history.map((gd) => {
+                        const isNap = gd.loaiGiaoDich === 'NAP_TIEN';
+                        return (
+                            <div key={gd.maGiaoDich} className="bg-black/20 rounded-lg p-2.5 border border-white/5 flex items-center justify-between hover:border-white/10 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isNap ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                                        {isNap ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
+                                    </div>
+                                    <div>
+                                        <p className="text-white text-xs font-medium">{gd.ghiChu || (isNap ? 'Nạp tiền' : 'Trừ tiền')}</p>
+                                        <p className="text-white/40 text-[10px]">{gd.thoiGian.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                </div>
+                                <span className={`text-xs font-mono font-bold ${isNap ? 'text-green-400' : 'text-red-400'}`}>
+                                    {isNap ? '+' : '-'}{gd.soTien.toLocaleString()}đ
+                                </span>
+                            </div>
+                        )
+                    })}
                 </div>
-              )}
+              ))}
             </div>
           </div>
 
@@ -372,7 +468,6 @@ export function SessionDashboard({
                 />
               </div>
 
-              {/* Validation Messages */}
               {newPassword &&
                 confirmPassword &&
                 newPassword !== confirmPassword && (

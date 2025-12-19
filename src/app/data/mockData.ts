@@ -115,7 +115,7 @@ export interface KhachHang {
     },
   ];
   
-  export const COST_PER_MINUTE = 9800; // VND per minute
+  export const COST_PER_MINUTE = 980; // VND per minute
   export const MIN_BALANCE_REQUIRED = 5000;
   
   // Mock Service Items -> DichVu

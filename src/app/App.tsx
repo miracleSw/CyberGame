@@ -275,7 +275,7 @@ export default function App() {
             onBack={() => setSelectedPC(null)}
           />
         )}
-        <Toaster position="top-right" />
+        <Toaster closeButton position="top-right" />
       </>
     );
   }
