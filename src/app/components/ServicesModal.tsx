@@ -161,7 +161,7 @@ export function ServicesModal({
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-white/20 shadow-2xl"
+        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-4xl w-full max-h-[100vh] overflow-hidden border border-white/20 shadow-2xl"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 to-red-600 p-6 flex items-center justify-between">
