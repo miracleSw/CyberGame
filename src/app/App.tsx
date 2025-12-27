@@ -263,7 +263,7 @@ export default function App() {
   if (!user || !session) {
     return (
       <>
-        {!selectedPC ? (
+        {/* {!selectedPC ? (
           <PCSelector
             pcs={pcs}
             onSelect={(maMay) => setSelectedPC(maMay)}
@@ -274,7 +274,14 @@ export default function App() {
             onLogin={handleLogin}
             onBack={() => setSelectedPC(null)}
           />
-        )}
+        )} */}
+
+        <LoginScreen
+          machineId="PC-01"
+          onLogin={handleLogin}
+          onBack={() => setSelectedPC(null)}
+        />
+
         <Toaster closeButton position="top-right" />
       </>
     );
