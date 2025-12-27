@@ -83,12 +83,12 @@ export function LoginScreen({
             Máy đang sử dụng:{" "}
             <span className="text-cyan-400">{machineId}</span>
           </p>
-          <button
+          {/* <button
             onClick={onBack}
             className="mb-4 text-sm text-white/70 hover:text-white transition"
           >
             ← Chọn máy khác
-          </button>
+          </button> */}
           <p className="text-purple-200">
             Đăng nhập để bắt đầu phiên chơi
           </p>
